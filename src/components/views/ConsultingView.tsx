@@ -217,7 +217,7 @@ export default function ConsultingView() {
                       <p className="leading-relaxed">{study.challenge}</p>
                     </div>
                     <div>
-                      <span className="font-semibold text-slate-700 block text-[11px] uppercase tracking-wide mb-0.5">TriefML Solution</span>
+                      <span className="font-semibold text-slate-700 block text-[11px] uppercase tracking-wide mb-0.5">Tango TRIEFML Solution</span>
                       <p className="leading-relaxed">{study.outcome}</p>
                     </div>
                   </div>
@@ -286,7 +286,7 @@ export default function ConsultingView() {
             <div className="bg-slate-50 rounded-xl p-6 border border-slate-200">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-2">Our Pricing Philosophy</h4>
               <p className="text-xs text-slate-500 leading-relaxed">
-                TriefML functions as an independent, non-governmental academic entity. All consulting fees are mapped purely to cover panel computational requirements, secure database transfers, and scientific processing costs. We maintain strict non-profit guidelines to assure un-compromised policy findings.
+                Tango (TRIEFML) functions as an independent, non-governmental academic entity. All consulting fees are mapped purely to cover panel computational requirements, secure database transfers, and scientific processing costs. We maintain strict non-profit guidelines to assure un-compromised policy findings.
               </p>
             </div>
           </div>

@@ -74,13 +74,13 @@ async function startServer() {
 <b>Abstract:</b>
 ${abstract ? abstract.slice(0, 1000) : "N/A"}...
 --------------------------------------
-<i>Submitted via TriefML Institute Portal</i>
+<i>Submitted via Tango TRIEFML Institute Portal</i>
 `;
 
     const success = await sendTelegramMessage(message);
     res.json({
       success,
-      referenceNumber: `TML-2025-${Math.floor(1000 + Math.random() * 9000)}`,
+      referenceNumber: `TRIEFML-2026-${Math.floor(1000 + Math.random() * 9000)}`,
       message: success 
         ? "Your research project has been successfully logged on the server and transmitted to our editorial board."
         : "Your research project has been logged in local system memory (Telegram notification skipped due to configuration setup)."
@@ -102,7 +102,7 @@ ${abstract ? abstract.slice(0, 1000) : "N/A"}...
 <b>Message:</b>
 ${message || "N/A"}
 --------------------------------------
-<i>Submitted via TriefML Contact Form</i>
+<i>Submitted via Tango TRIEFML Contact Form</i>
 `;
 
     const success = await sendTelegramMessage(text);
@@ -130,7 +130,7 @@ ${message || "N/A"}
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`TriefML Server running on http://localhost:${PORT}`);
+    console.log(`Tango TRIEFML Server running on http://localhost:${PORT}`);
   });
 }
 
