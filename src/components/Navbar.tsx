@@ -219,10 +219,10 @@ export default function Navbar({ currentView, onViewChange, onSearchSubmit }: Na
 
               <button 
                 id="nav-btn-login"
-                onClick={() => alert("Institutional authentication and research portal login will be available during active cycles. Standard accounts can submit open access studies without authentication.")}
-                className="text-slate-300 hover:text-white text-sm font-medium cursor-pointer"
+                onClick={() => onViewChange("admin")}
+                className="text-slate-300 hover:text-[#c8960c] text-sm font-medium cursor-pointer flex items-center gap-1"
               >
-                Login
+                🔒 Admin
               </button>
             </div>
 

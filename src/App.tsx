@@ -3,6 +3,7 @@ import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 import HomeView from "./components/views/HomeView";
 import ResearchView from "./components/views/ResearchView";
+import AdminView from "./components/views/AdminView";
 import PublicationsView from "./components/views/PublicationsView";
 import ProjectReviewView from "./components/views/ProjectReviewView";
 import ConsultingView from "./components/views/ConsultingView";
@@ -152,6 +153,10 @@ export default function App() {
             onIncrementDownload={handleIncrementDownload}
             onOpenCitation={handleOpenCitation}
           />
+        )}
+
+        {currentView === "admin" && (
+          <AdminView />
         )}
       </main>
 
