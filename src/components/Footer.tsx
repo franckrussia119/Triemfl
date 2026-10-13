@@ -54,7 +54,7 @@ export default function Footer() {
         <nav aria-label="Institute" className="lg:col-span-2">
           <h2 className="font-sans text-white font-semibold mb-3">Institute</h2>
           <ul className="space-y-2 text-[0.95rem]">
-            {[["/submit", "Submit research"], ["/track", "Track a submission"], ["/policies", "Editorial policies"], ["/project-review", "Project review"], ["/consulting", "Consulting"], ["/about", "About"]].map(([to, l]) => (
+            {[["/submit", "Submit research"], ["/signup", "Create an account"], ["/policies", "Editorial policies"], ["/project-review", "Project review"], ["/consulting", "Consulting"], ["/about", "About"]].map(([to, l]) => (
               <li key={to}><Link className="hover:text-white" to={to}>{l}</Link></li>
             ))}
           </ul>
@@ -80,7 +80,7 @@ export default function Footer() {
       <div className="border-t border-white/10">
         <div className="container-x py-5 flex flex-wrap justify-between gap-3 text-sm text-slate-400">
           <span>© {new Date().getFullYear()} {SITE.name}</span>
-          <Link to="/admin" className="hover:text-white">Staff login</Link>
+          <span className="flex gap-4"><Link to="/policies" className="hover:text-white">Policies</Link><Link to="/signin" className="hover:text-white">Sign in</Link></span>
         </div>
       </div>
     </footer>

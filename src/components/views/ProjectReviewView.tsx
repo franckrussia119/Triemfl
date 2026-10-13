@@ -3,7 +3,8 @@ import { Check } from "lucide-react";
 import { usePageTitle } from "../../lib/router";
 import { SITE, DIVISIONS } from "../../lib/site";
 import { PageHero, SectionHeader } from "../ui";
-import RequestForm from "../RequestForm";
+import { Link } from "../../lib/router";
+import { useAuth } from "../../lib/auth";
 
 const STAGES = [
   ["Submission", "You send the project documentation and the questions you need answered."],
@@ -60,23 +61,31 @@ export default function ProjectReviewView() {
       </section>
 
       <section className="py-16" id="request">
-        <div className="container-x grid lg:grid-cols-12 gap-10">
-          <div className="lg:col-span-4">
-            <SectionHeader eyebrow="Request a review" title="Tell us about the project" />
-            <p className="mt-4 text-slate-600 leading-relaxed">Describe the project, its budget and timeline, and what you need the review to answer. Attach the main document if you have one. Everything you send is treated as confidential.</p>
-            <p className="mt-4 text-slate-600">Or write to <a className="link" href={`mailto:${SITE.email.reviews}`}>{SITE.email.reviews}</a>.</p>
-          </div>
-          <div className="lg:col-span-8">
-            <RequestForm kind="project-review" withFile submitLabel="Send review request"
-              subjectLabel="Service level" subjectOptions={[...LEVELS.map((l) => l.name as string), "Not sure yet"]}
-              extras={[
-                { id: "division", label: "Area", options: DIVISIONS.map((d) => d.name) },
-                { id: "size", label: "Approximate project size", placeholder: "e.g. USD 40 million" },
-              ]}
-              messageLabel="Project description" messageHint="Objectives, budget, timeline and the questions the review should answer." />
+        <div className="container-x">
+          <div className="card p-8 sm:p-12 grid lg:grid-cols-12 gap-8 items-center">
+            <div className="lg:col-span-7">
+              <p className="eyebrow">Request a review</p>
+              <h2 className="mt-2 text-3xl sm:text-4xl font-semibold text-navy-ink leading-tight">Submit your project from an institution account</h2>
+              <p className="mt-4 text-slate-600 text-lg leading-relaxed">Upload your documents, follow the review, answer the panel's questions and receive the final report, all in one secure place. Institution accounts are verified by our team.</p>
+            </div>
+            <div className="lg:col-span-5 flex flex-col gap-3">
+              <ProjectCTA />
+              <p className="text-sm text-slate-500">Questions first? Write to <a className="link" href={`mailto:${SITE.email.reviews}`}>{SITE.email.reviews}</a>.</p>
+            </div>
           </div>
         </div>
       </section>
+    </>
+  );
+}
+
+function ProjectCTA() {
+  const { user } = useAuth();
+  if (user) return <Link to="/account/projects/new" className="btn btn-gold">Submit a project</Link>;
+  return (
+    <>
+      <Link to="/signup?type=institution&next=/account/projects/new" className="btn btn-navy">Create an institution account</Link>
+      <Link to="/signin?next=/account/projects/new" className="btn btn-outline">I already have an account</Link>
     </>
   );
 }

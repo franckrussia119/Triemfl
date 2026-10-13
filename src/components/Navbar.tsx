@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { GraduationCap, Menu, X, Search } from "lucide-react";
+import { GraduationCap, Menu, X, Search, UserCircle } from "lucide-react";
 import { Link, navigate, useLocation } from "../lib/router";
 import { SITE } from "../lib/site";
+import { useAuth, isStaff } from "../lib/auth";
 
 export const NAV = [
   { to: "/research", label: "Research" },
@@ -26,6 +27,8 @@ export function Logo({ onDark = true, compact = false }: { onDark?: boolean; com
 
 export default function Navbar() {
   const { path } = useLocation();
+  const { user, counts } = useAuth();
+  const badge = (counts?.unread || 0) + (counts?.pendingReviews || 0);
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
 
@@ -71,7 +74,15 @@ export default function Navbar() {
             <input id="nav-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search research"
               className="bg-white/10 border border-white/15 text-white placeholder:text-slate-400 rounded-md h-10 pl-9 pr-3 w-48 text-sm focus:outline-none focus:border-gold" />
           </form>
-          <Link to="/submit" className="btn btn-gold btn-sm hidden md:inline-flex whitespace-nowrap">Submit research</Link>
+          {user ? (
+            <Link to={isStaff(user) ? "/admin" : "/account"} className="hidden md:inline-flex items-center gap-2 text-white whitespace-nowrap px-2 py-2 rounded-md hover:bg-white/10 relative">
+              <UserCircle className="w-5 h-5" aria-hidden /><span className="text-[0.95rem]">{isStaff(user) ? "Admin" : "My space"}</span>
+              {badge > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 rounded-full bg-gold text-navy-deep text-xs font-bold flex items-center justify-center">{badge}<span className="sr-only"> items need attention</span></span>}
+            </Link>
+          ) : (
+            <Link to="/signin" className="hidden md:inline-flex text-white whitespace-nowrap px-3 py-2 rounded-md hover:bg-white/10 text-[0.95rem]">Sign in</Link>
+          )}
+          <Link to={user ? "/account/manuscripts/new" : "/submit"} className="btn btn-gold btn-sm hidden md:inline-flex whitespace-nowrap">Submit research</Link>
           <button className="xl:hidden ml-auto md:ml-0 text-white w-11 h-11 flex items-center justify-center" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} onClick={() => setOpen(!open)}>
             {open ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -87,13 +98,14 @@ export default function Navbar() {
                 className="w-full bg-white/10 border border-white/15 text-white placeholder:text-slate-400 rounded-md h-12 pl-9 pr-3 focus:outline-none focus:border-gold" />
             </form>
             <ul>
-              {[{ to: "/", label: "Home" }, ...NAV, { to: "/track", label: "Track a submission" }].map((n) => (
+              {[{ to: "/", label: "Home" }, ...NAV, user ? { to: isStaff(user) ? "/admin" : "/account", label: isStaff(user) ? "Admin area" : "My space" } : { to: "/signin", label: "Sign in" }].map((n) => (
                 <li key={n.to}>
                   <Link to={n.to} className={`block py-3.5 border-b border-white/10 font-serif text-2xl ${path === n.to ? "text-gold" : "text-white"}`}>{n.label}</Link>
                 </li>
               ))}
             </ul>
-            <Link to="/submit" className="btn btn-gold w-full mt-6">Submit research</Link>
+            <Link to={user ? "/account/manuscripts/new" : "/submit"} className="btn btn-gold w-full mt-6">Submit research</Link>
+            {!user && <Link to="/signup" className="btn btn-ghost-light w-full mt-3">Create an account</Link>}
           </div>
         </div>
       )}

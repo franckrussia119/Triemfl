@@ -6,9 +6,10 @@ import dotenv from "dotenv";
 dotenv.config();
 
 import { db, publicationRow, DATA_DIR } from "./server/db";
-import { publicRouter, downloadHandler } from "./server/public-routes";
+import { publicRouter, downloadHandler, mediaHandler } from "./server/public-routes";
 import { adminRouter } from "./server/admin-routes";
-import { adminConfigured } from "./server/auth";
+import { accountRouter } from "./server/account-routes";
+import { loadUser, sameOrigin, bootstrapAdmin } from "./server/auth";
 import { esc } from "./server/notify";
 import { SITE } from "./src/lib/site";
 
@@ -23,7 +24,10 @@ const PAGE_META: Record<string, { title: string; description: string }> = {
   "/about": { title: `About | ${SITE.short}`, description: `About the ${SITE.name}.` },
   "/policies": { title: `Editorial policies | ${SITE.short}`, description: "Peer review, open access, publication ethics and author guidelines." },
   "/contact": { title: `Contact | ${SITE.short}`, description: `Contact the ${SITE.name}.` },
+  "/signin": { title: `Sign in | ${SITE.short}`, description: `Sign in to your ${SITE.short} account.` },
+  "/signup": { title: `Create an account | ${SITE.short}`, description: "Create a researcher or institution account to submit papers and projects." },
 };
+const NOINDEX = ["/account", "/admin", "/signin", "/signup", "/verify", "/reset-password", "/forgot-password", "/track"];
 
 function baseUrl(req: express.Request) {
   if (process.env.PUBLIC_URL) return process.env.PUBLIC_URL.replace(/\/$/, "");
@@ -62,12 +66,19 @@ function headFor(urlPath: string, base: string) {
       return tags.filter(Boolean).join("\n    ");
     }
   }
+  const a = urlPath.match(/^\/authors\/(\d+)$/);
+  if (a) {
+    const u = db.prepare("SELECT name, institution, bio FROM users WHERE id = ? AND public_profile = 1 AND status = 'active'").get(a[1]) as any;
+    if (u) return `<title>${esc(u.name)} | ${SITE.short}</title>\n    <meta name="description" content="${esc((u.institution ? u.institution + ". " : "") + (u.bio || "").slice(0, 250))}">\n    <link rel="canonical" href="${base}${urlPath}">`;
+  }
   const key = "/" + (urlPath.split("/")[1] || "");
   const meta = PAGE_META[key] || PAGE_META["/"];
-  return `<title>${esc(meta.title)}</title>\n    <meta name="description" content="${esc(meta.description)}">\n    <meta property="og:title" content="${esc(meta.title)}"><meta property="og:description" content="${esc(meta.description)}">`;
+  const robots = NOINDEX.includes(key) ? `\n    <meta name="robots" content="noindex">` : "";
+  return `<title>${esc(meta.title)}</title>${robots}\n    <meta name="description" content="${esc(meta.description)}">\n    <meta property="og:title" content="${esc(meta.title)}"><meta property="og:description" content="${esc(meta.description)}">`;
 }
 
 async function startServer() {
+  bootstrapAdmin();
   const app = express();
   const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
   const prod = process.env.NODE_ENV === "production";
@@ -83,18 +94,22 @@ async function startServer() {
     next();
   });
 
+  app.use(loadUser);
+  app.use("/api", sameOrigin);
   app.get("/api/health", (_req, res) => res.json({ status: "ok", time: new Date().toISOString() }));
+  app.use("/api/account", accountRouter);
   app.use("/api/admin", adminRouter);
   app.use("/api", publicRouter);
   app.use("/api", (_req, res) => res.status(404).json({ error: "not_found" }));
   app.get("/files/:slug", downloadHandler);
+  app.get("/media/:file", mediaHandler);
 
   app.get("/robots.txt", (req, res) => {
-    res.type("text/plain").send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /api/\nSitemap: ${baseUrl(req)}/sitemap.xml\n`);
+    res.type("text/plain").send(`User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /account\nDisallow: /api/\nSitemap: ${baseUrl(req)}/sitemap.xml\n`);
   });
   app.get("/sitemap.xml", (req, res) => {
     const base = baseUrl(req);
-    const pages = Object.keys(PAGE_META).filter((p) => p !== "/track");
+    const pages = Object.keys(PAGE_META).filter((p) => !NOINDEX.includes(p));
     const papers = db.prepare("SELECT slug, updated_at FROM publications WHERE status='published'").all() as any[];
     const urls = [
       ...pages.map((p) => `<url><loc>${base}${p === "/" ? "" : p}</loc></url>`),
@@ -130,7 +145,8 @@ async function startServer() {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`TRIEFML server running on http://localhost:${PORT}`);
     console.log(`Data directory: ${DATA_DIR}`);
-    if (!adminConfigured()) console.warn("ADMIN_PASSWORD is not set: the admin portal is disabled.");
+    const admins = (db.prepare("SELECT COUNT(*) n FROM users WHERE role = 'admin'").get() as any).n;
+    if (!admins) console.warn("No administrator account yet. Set ADMIN_EMAIL and ADMIN_PASSWORD and restart.");
   });
 }
 

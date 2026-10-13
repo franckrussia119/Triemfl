@@ -13,8 +13,12 @@ import ConsultingView from "./components/views/ConsultingView";
 import AboutView from "./components/views/AboutView";
 import PoliciesView from "./components/views/PoliciesView";
 import ContactView from "./components/views/ContactView";
+import AuthorView from "./components/views/AuthorView";
+import AccountView from "./components/views/AccountView";
+import { SignInView, SignUpView, VerifyView, ForgotView, ResetView } from "./components/views/AuthViews";
+import { AuthProvider } from "./lib/auth";
 
-const AdminView = lazy(() => import("./components/views/AdminView"));
+const AdminView = lazy(() => import("./components/admin/AdminApp"));
 
 function NotFound() {
   return (
@@ -31,7 +35,12 @@ function NotFound() {
 }
 
 export default function App() {
+  return <AuthProvider><Routes /></AuthProvider>;
+}
+
+function Routes() {
   const { path, search } = useLocation();
+  const author = path.match(/^\/authors\/(\d+)$/);
   const paper = path.match(/^\/research\/([a-z0-9-]+)$/);
 
   if (path.startsWith("/admin")) {
@@ -50,6 +59,13 @@ export default function App() {
   else if (path === "/about") page = <AboutView />;
   else if (path === "/policies") page = <PoliciesView />;
   else if (path === "/contact") page = <ContactView />;
+  else if (author) page = <AuthorView id={author[1]} />;
+  else if (path === "/signin") page = <SignInView search={search} />;
+  else if (path === "/signup") page = <SignUpView search={search} />;
+  else if (path === "/verify") page = <VerifyView search={search} />;
+  else if (path === "/forgot-password") page = <ForgotView />;
+  else if (path === "/reset-password") page = <ResetView search={search} />;
+  else if (path === "/account" || path.startsWith("/account/")) page = <AccountView />;
   else page = <NotFound />;
 
   return (

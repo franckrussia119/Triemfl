@@ -100,7 +100,141 @@ CREATE TABLE IF NOT EXISTS announcements (
 );
 
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+
+-- Accounts --------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL DEFAULT '',
+  name TEXT NOT NULL,
+  account_type TEXT NOT NULL DEFAULT 'researcher',
+  role TEXT NOT NULL DEFAULT 'user',
+  status TEXT NOT NULL DEFAULT 'active',
+  email_verified INTEGER NOT NULL DEFAULT 0,
+  title TEXT NOT NULL DEFAULT '',
+  institution TEXT NOT NULL DEFAULT '',
+  position TEXT NOT NULL DEFAULT '',
+  country TEXT NOT NULL DEFAULT '',
+  orcid TEXT NOT NULL DEFAULT '',
+  bio TEXT NOT NULL DEFAULT '',
+  expertise TEXT NOT NULL DEFAULT '',
+  photo TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL DEFAULT '',
+  website TEXT NOT NULL DEFAULT '',
+  public_profile INTEGER NOT NULL DEFAULT 1,
+  last_login_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  token_hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS tokens (
+  token_hash TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind TEXT NOT NULL,
+  expires_at TEXT NOT NULL
+);
+
+-- Files attached to submissions, requests and messages --------------------
+CREATE TABLE IF NOT EXISTS files (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_type TEXT NOT NULL,
+  owner_id INTEGER NOT NULL,
+  kind TEXT NOT NULL,
+  version INTEGER NOT NULL DEFAULT 1,
+  path TEXT NOT NULL,
+  name TEXT NOT NULL,
+  size INTEGER NOT NULL DEFAULT 0,
+  uploaded_by INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS files_owner ON files(owner_type, owner_id);
+
+-- Conversation threads on submissions and requests ------------------------
+CREATE TABLE IF NOT EXISTS messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  thread_type TEXT NOT NULL,
+  thread_id INTEGER NOT NULL,
+  user_id INTEGER,
+  from_staff INTEGER NOT NULL DEFAULT 0,
+  body TEXT NOT NULL,
+  read_by_owner INTEGER NOT NULL DEFAULT 0,
+  read_by_staff INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS messages_thread ON messages(thread_type, thread_id);
+
+-- Peer review ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS reviews (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  submission_id INTEGER NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+  reviewer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  round INTEGER NOT NULL DEFAULT 1,
+  status TEXT NOT NULL DEFAULT 'invited',
+  due_date TEXT NOT NULL DEFAULT '',
+  recommendation TEXT NOT NULL DEFAULT '',
+  scores TEXT NOT NULL DEFAULT '{}',
+  comments_author TEXT NOT NULL DEFAULT '',
+  comments_editor TEXT NOT NULL DEFAULT '',
+  invited_at TEXT NOT NULL DEFAULT (datetime('now')),
+  responded_at TEXT,
+  submitted_at TEXT
+);
+
+-- People shown on the site (board, council) and editable site texts --------
+CREATE TABLE IF NOT EXISTS people (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  grp TEXT NOT NULL DEFAULT 'board',
+  name TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT '',
+  affiliation TEXT NOT NULL DEFAULT '',
+  orcid TEXT NOT NULL DEFAULT '',
+  bio TEXT NOT NULL DEFAULT '',
+  photo TEXT NOT NULL DEFAULT '',
+  sort INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+
+CREATE TABLE IF NOT EXISTS activity (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER,
+  action TEXT NOT NULL,
+  target_type TEXT NOT NULL DEFAULT '',
+  target_id INTEGER,
+  detail TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
 `);
+
+// ---- Migrations for databases created by earlier versions ----
+function addColumn(table: string, col: string, def: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
+}
+addColumn("submissions", "user_id", "INTEGER");
+addColumn("submissions", "round", "INTEGER NOT NULL DEFAULT 1");
+addColumn("requests", "user_id", "INTEGER");
+addColumn("requests", "division", "TEXT NOT NULL DEFAULT ''");
+addColumn("requests", "assigned_to", "INTEGER");
+
+// Older submissions stored their single file on the row: copy into `files`.
+{
+  const legacy = db.prepare(`SELECT s.id, s.file_path, s.file_name, s.created_at FROM submissions s
+    WHERE s.file_path <> '' AND NOT EXISTS (SELECT 1 FROM files f WHERE f.owner_type='submission' AND f.owner_id=s.id)`).all() as any[];
+  const ins = db.prepare("INSERT INTO files (owner_type, owner_id, kind, version, path, name, created_at) VALUES ('submission', ?, 'manuscript', 1, ?, ?, ?)");
+  legacy.forEach((s) => ins.run(s.id, s.file_path, s.file_name, s.created_at));
+  const legacyReq = db.prepare(`SELECT r.id, r.file_path, r.file_name, r.created_at FROM requests r
+    WHERE r.file_path <> '' AND NOT EXISTS (SELECT 1 FROM files f WHERE f.owner_type='request' AND f.owner_id=r.id)`).all() as any[];
+  const insR = db.prepare("INSERT INTO files (owner_type, owner_id, kind, path, name, created_at) VALUES ('request', ?, 'document', ?, ?, ?)");
+  legacyReq.forEach((r) => insR.run(r.id, r.file_path, r.file_name, r.created_at));
+}
 
 export type Author = { name: string; affiliation?: string; orcid?: string };
 
@@ -137,6 +271,25 @@ export function metaGet(key: string) {
 }
 export function metaSet(key: string, value: string) {
   db.prepare("INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(key, value);
+}
+
+export function getSettings(): Record<string, string> {
+  const rows = db.prepare("SELECT key, value FROM settings").all() as { key: string; value: string }[];
+  return Object.fromEntries(rows.map((r) => [r.key, r.value]));
+}
+
+export function logActivity(userId: number | null | undefined, action: string, targetType = "", targetId: number | null = null, detail = "") {
+  db.prepare("INSERT INTO activity (user_id, action, target_type, target_id, detail) VALUES (?,?,?,?,?)").run(userId ?? null, action, targetType, targetId, detail.slice(0, 500));
+}
+
+export function addFile(ownerType: string, ownerId: number, kind: string, f: Express.Multer.File, uploadedBy: number | null, version = 1) {
+  const info = db.prepare("INSERT INTO files (owner_type, owner_id, kind, version, path, name, size, uploaded_by) VALUES (?,?,?,?,?,?,?,?)")
+    .run(ownerType, ownerId, kind, version, f.filename, f.originalname.slice(0, 200), f.size, uploadedBy);
+  return Number(info.lastInsertRowid);
+}
+
+export function filesFor(ownerType: string, ownerId: number) {
+  return db.prepare("SELECT id, kind, version, name, size, uploaded_by, created_at FROM files WHERE owner_type = ? AND owner_id = ? ORDER BY id").all(ownerType, ownerId) as any[];
 }
 
 export function publicationRow(r: any, opts: { admin?: boolean } = {}) {

@@ -1,6 +1,6 @@
 import React, { useRef, useState } from "react";
 import { CheckCircle2, Paperclip } from "lucide-react";
-import { ApiError, errorMessage } from "../lib/api";
+import { api, ApiError, errorMessage } from "../lib/api";
 import { Field, Notice } from "./ui";
 
 type Extra = { id: string; label: string; options?: string[]; placeholder?: string };
@@ -8,7 +8,7 @@ type Extra = { id: string; label: string; options?: string[]; placeholder?: stri
 // One form for project-review, consulting and contact requests. Saved in the
 // database (visible in the admin portal) and sent to staff on Telegram.
 export default function RequestForm({ kind, subjectLabel, subjectOptions, extras = [], withFile, messageLabel = "Message", messageHint, submitLabel = "Send" }: {
-  kind: "project-review" | "consulting" | "contact"; subjectLabel?: string; subjectOptions?: string[]; extras?: Extra[];
+  kind: "consulting" | "contact"; subjectLabel?: string; subjectOptions?: string[]; extras?: Extra[];
   withFile?: boolean; messageLabel?: string; messageHint?: string; submitLabel?: string;
 }) {
   const [v, setV] = useState<Record<string, string>>({ name: "", email: "", organization: "", subject: subjectOptions?.[0] || "", message: "", company: "" });
@@ -31,15 +31,8 @@ export default function RequestForm({ kind, subjectLabel, subjectOptions, extras
     setErrors(errs);
     if (Object.keys(errs).length) return;
     setBusy(true); setFormError("");
-    const fd = new FormData();
-    fd.append("kind", kind);
-    Object.entries(v).forEach(([k, val]) => fd.append(k, String(val)));
-    fd.append("details", JSON.stringify(details));
-    if (file) fd.append("document", file);
     try {
-      const res = await fetch("/api/requests", { method: "POST", body: fd });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new ApiError(res.status, data);
+      const data = await api<{ ref: string }>("/api/requests", { method: "POST", json: { kind, ...v, details } });
       setRef(data.ref);
     } catch (err) {
       if (err instanceof ApiError && err.data?.errors) setErrors(err.data.errors);

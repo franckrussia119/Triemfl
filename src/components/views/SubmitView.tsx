@@ -1,22 +1,54 @@
 import React, { useRef, useState } from "react";
 import { Plus, Trash2, UploadCloud, CheckCircle2, FileText } from "lucide-react";
-import { Link, usePageTitle } from "../../lib/router";
+import { Link, navigate, usePageTitle } from "../../lib/router";
 import { ApiError, errorMessage, type Author } from "../../lib/api";
+import { useAuth } from "../../lib/auth";
 import { SITE, CATEGORIES, PUBLICATION_TYPES } from "../../lib/site";
 import { PageHero, Field, Notice } from "../ui";
 
 const STEPS = ["Type", "Authors", "Details", "Manuscript", "Declarations"];
-const FIELD_STEP: Record<string, number> = { type: 0, category: 0, authors: 1, email: 1, title: 2, abstract: 2, manuscript: 3, declarations: 4 };
+const FIELD_STEP: Record<string, number> = { type: 0, category: 0, authors: 1, title: 2, abstract: 2, manuscript: 3, declarations: 4 };
 const MAX_MB = 25;
 const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
 
-export default function SubmitView() {
+export default function SubmitView({ embedded = false }: { embedded?: boolean }) {
   usePageTitle(`Submit a manuscript | ${SITE.short}`);
+  const { user, loading } = useAuth();
+  if (loading) return <div className="min-h-[50vh]" />;
+  if (!user) return <SubmitGate />;
+  return <SubmitForm embedded={embedded} />;
+}
+
+function SubmitGate() {
+  return (
+    <>
+      <PageHero eyebrow="Manuscript submission" title="Submit your research"
+        intro={<>Submissions are considered for {SITE.publishing.reviewModel.toLowerCase()} and open-access publication. {SITE.publishing.processingCharges}.</>} />
+      <section className="py-14 bg-paper">
+        <div className="container-x grid md:grid-cols-2 gap-6 max-w-4xl">
+          <div className="card p-8">
+            <h2 className="text-2xl font-semibold text-navy-ink">New to {SITE.short}?</h2>
+            <p className="mt-2 text-slate-600 leading-relaxed">Create a free researcher account. You'll submit manuscripts, follow peer review, correspond with the editors and upload revisions from one place.</p>
+            <Link to="/signup?next=/account/manuscripts/new" className="btn btn-navy mt-6">Create an account</Link>
+          </div>
+          <div className="card p-8">
+            <h2 className="text-2xl font-semibold text-navy-ink">Already registered?</h2>
+            <p className="mt-2 text-slate-600 leading-relaxed">Sign in to submit a new manuscript or check the ones you've already sent.</p>
+            <Link to="/signin?next=/account/manuscripts/new" className="btn btn-outline mt-6">Sign in</Link>
+          </div>
+          <p className="md:col-span-2 text-slate-600">Before submitting, read the <Link to="/policies" className="link">editorial policies and author guidelines</Link>.</p>
+        </div>
+      </section>
+    </>
+  );
+}
+
+function SubmitForm({ embedded }: { embedded: boolean }) {
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [type, setType] = useState<string>("Working Paper");
   const [category, setCategory] = useState("");
-  const [authors, setAuthors] = useState<Author[]>([{ name: "", affiliation: "", orcid: "" }]);
-  const [email, setEmail] = useState("");
+  const [authors, setAuthors] = useState<Author[]>([{ name: user!.name, affiliation: user!.institution, orcid: user!.orcid }]);
   const [title, setTitle] = useState("");
   const [abstract, setAbstract] = useState("");
   const [keywords, setKeywords] = useState("");
@@ -27,7 +59,7 @@ export default function SubmitView() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sending, setSending] = useState(false);
   const [formError, setFormError] = useState("");
-  const [done, setDone] = useState<{ ref: string; emailSent: boolean } | null>(null);
+
   const [drag, setDrag] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
 
@@ -36,7 +68,6 @@ export default function SubmitView() {
     if (s === 0 && !category) e.category = "Choose the research area closest to your paper.";
     if (s === 1) {
       if (!authors[0].name.trim()) e.authors = "Enter the name of the corresponding author.";
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "Enter a valid email address. We'll send updates here.";
       authors.forEach((a, i) => { if (a.orcid && !/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/.test(a.orcid)) e[`orcid${i}`] = "ORCID iDs look like 0000-0002-1825-0097."; });
     }
     if (s === 2) {
@@ -69,16 +100,15 @@ export default function SubmitView() {
     const fd = new FormData();
     fd.append("type", type); fd.append("category", category);
     fd.append("authors", JSON.stringify(authors.filter((a) => a.name.trim())));
-    fd.append("email", email); fd.append("title", title); fd.append("abstract", abstract);
+    fd.append("title", title); fd.append("abstract", abstract);
     fd.append("keywords", keywords); fd.append("jelCodes", jel); fd.append("coverLetter", cover);
     fd.append("declarations", "accepted");
     fd.append("manuscript", file!);
     try {
-      const res = await fetch("/api/submissions", { method: "POST", body: fd });
+      const res = await fetch("/api/account/submissions", { method: "POST", body: fd, credentials: "same-origin" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new ApiError(res.status, data);
-      setDone(data);
-      window.scrollTo(0, 0);
+      navigate(`/account/manuscripts/${data.id}?new=1`);
     } catch (err) {
       if (err instanceof ApiError && err.data?.errors) {
         setErrors(err.data.errors);
@@ -89,40 +119,20 @@ export default function SubmitView() {
     } finally { setSending(false); }
   }
 
-  if (done) {
-    return (
-      <>
-        <PageHero eyebrow="Manuscript submission" title="Submission received" />
-        <section className="py-14">
-          <div className="container-x max-w-2xl">
-            <div className="card p-8 text-center">
-              <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto" aria-hidden />
-              <p className="mt-4 text-slate-600">Your reference number</p>
-              <p className="mt-1 font-serif text-3xl text-navy-ink tracking-wide select-all">{done.ref}</p>
-              <p className="mt-6 text-slate-700 leading-relaxed">
-                The editorial office will screen your manuscript and contact you at <strong>{email}</strong>.
-                {done.emailSent ? " A confirmation email is on its way." : " Keep this reference number: you'll need it with your email to track the submission."}
-              </p>
-              <div className="mt-8 flex flex-wrap justify-center gap-3">
-                <Link to={`/track?ref=${encodeURIComponent(done.ref)}`} className="btn btn-navy">Track this submission</Link>
-                <Link to="/research" className="btn btn-outline">Browse the library</Link>
-              </div>
-            </div>
-          </div>
-        </section>
-      </>
-    );
-  }
-
   const setAuthor = (i: number, k: keyof Author, v: string) => setAuthors(authors.map((a, j) => (j === i ? { ...a, [k]: v } : a)));
+
+  const hero = embedded ? (
+    <div className="mb-6"><h1 className="text-2xl sm:text-3xl font-semibold text-navy-ink">Submit a manuscript</h1><p className="mt-1.5 text-slate-600">{SITE.publishing.reviewModel}, open access, {SITE.publishing.processingCharges.toLowerCase()}. Read the <Link to="/policies" className="link">author guidelines</Link> first.</p></div>
+  ) : null;
 
   return (
     <>
-      <PageHero eyebrow="Manuscript submission" title="Submit your research"
-        intro={<>Submissions are considered for {SITE.publishing.reviewModel.toLowerCase()} and open-access publication. {SITE.publishing.processingCharges}. Read the <Link to="/policies" className="underline underline-offset-2 text-white">editorial policies</Link> before submitting.</>} />
+      {hero}
+      {!embedded && <PageHero eyebrow="Manuscript submission" title="Submit your research"
+        intro={<>Submissions are considered for {SITE.publishing.reviewModel.toLowerCase()} and open-access publication. {SITE.publishing.processingCharges}. Read the <Link to="/policies" className="underline underline-offset-2 text-white">editorial policies</Link> before submitting.</>} />}
 
-      <section className="py-12 bg-paper">
-        <div className="container-x max-w-3xl">
+      <section className={embedded ? "" : "py-12 bg-paper"}>
+        <div className={embedded ? "max-w-3xl" : "container-x max-w-3xl"}>
           <ol className="flex gap-1.5 mb-8" aria-label="Steps">
             {STEPS.map((s, i) => (
               <li key={s} className="flex-1" aria-current={i === step ? "step" : undefined}>
@@ -177,9 +187,6 @@ export default function SubmitView() {
                   </fieldset>
                 ))}
                 {authors.length < 12 && <button type="button" className="btn btn-outline btn-sm" onClick={() => setAuthors([...authors, { name: "", affiliation: "", orcid: "" }])}><Plus className="w-4 h-4" aria-hidden /> Add a co-author</button>}
-                <Field id="email" label="Email for correspondence" hint="All editorial decisions are sent to this address." error={errors.email}>
-                  <input id="email" type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" aria-invalid={!!errors.email} />
-                </Field>
               </>
             )}
 
@@ -264,7 +271,7 @@ export default function SubmitView() {
                 : <button type="submit" className="btn btn-gold" disabled={sending}>{sending ? "Uploading…" : "Submit manuscript"}</button>}
             </div>
           </form>
-          <p className="text-sm text-slate-500 mt-4 text-center">Questions about submitting? Write to <a className="link" href={`mailto:${SITE.email.editorial}`}>{SITE.email.editorial}</a>.</p>
+          <p className="text-sm text-slate-500 mt-4">Signed in as {user!.email}. Editorial correspondence goes to this address. Questions? Write to <a className="link" href={`mailto:${SITE.email.editorial}`}>{SITE.email.editorial}</a>.</p>
         </div>
       </section>
     </>

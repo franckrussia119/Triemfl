@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { Search, FileSearch, Users, BadgeCheck, Landmark, BarChart3, ShieldCheck, GraduationCap, ArrowRight, BookOpen, Send, Scale, Unlock } from "lucide-react";
+import { Search, Users, BadgeCheck, Landmark, BarChart3, ShieldCheck, GraduationCap, ArrowRight, BookOpen, Send, Scale, Unlock, FileSearch } from "lucide-react";
 import { Link, navigate, usePageTitle } from "../../lib/router";
 import { api, type Publication, type Announcement, formatDate } from "../../lib/api";
 import { SITE, DIVISIONS, CATEGORIES } from "../../lib/site";
 import { PaperCard, SectionHeader, EmptyState, LoadingRows } from "../ui";
 import { NewsletterForm } from "../Footer";
+import Guilloche from "../Guilloche";
+import { useAuth } from "../../lib/auth";
+import { useContent } from "../../lib/content";
+import { authorNames } from "../../lib/api";
 
 type Stats = { publications: number; downloads: number; authors: number };
 
@@ -22,62 +26,62 @@ export default function HomeView() {
     api<Announcement[]>("/api/announcements").then(setNews).catch(() => {});
   }, []);
 
+  const { user } = useAuth();
+  const content = useContent();
+  const heroTitle = content.text("hero_title", "Research that informs economic policy");
+  const heroIntro = content.text("hero_intro", `${SITE.short} publishes peer-reviewed, open-access research and gives governments and institutions independent expert evaluation of their projects.`);
+  const cfp = content.setting("call_for_papers");
   const research = (papers || []).filter((p) => !["Book", "Report"].includes(p.type)).slice(0, 6);
+  const featured = papers === null ? undefined : research[0] || null;
   const d = DIVISIONS[division];
 
   return (
     <>
       {/* Hero */}
-      <section className="on-dark bg-navy text-white relative overflow-hidden">
-        <div aria-hidden className="absolute inset-0 opacity-[0.07]" style={{ backgroundImage: "linear-gradient(rgba(255,255,255,.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.6) 1px, transparent 1px)", backgroundSize: "48px 48px" }} />
-        <div className="container-x relative py-16 sm:py-24 grid lg:grid-cols-12 gap-12 items-center">
+      <section className="on-dark bg-navy-deep text-white relative overflow-hidden">
+        <div aria-hidden className="absolute inset-0" style={{ background: "radial-gradient(1200px 600px at 85% 30%, rgba(30,64,160,.45), transparent 60%), radial-gradient(800px 500px at 0% 100%, rgba(10,36,99,.9), transparent 70%)" }} />
+        <Guilloche size={900} className="absolute -right-72 -top-24 w-[min(1000px,110vw)] h-auto pointer-events-none hidden md:block" opacity={0.2} />
+        <div className="container-x relative pt-14 pb-10 sm:pt-20 sm:pb-14 grid lg:grid-cols-12 gap-12 items-center">
           <div className="lg:col-span-7">
-            <p className="eyebrow">Economics · Finance · Management · Law</p>
-            <h1 className="mt-4 text-4xl sm:text-6xl font-semibold leading-[1.08]">Research that informs economic policy</h1>
-            <p className="mt-6 text-lg sm:text-xl text-slate-200 leading-relaxed max-w-2xl">
-              {SITE.short} publishes peer-reviewed, open-access research and provides independent expert evaluation of economic and development projects.
-            </p>
+            {cfp && (
+              <Link to="/submit" className="inline-flex items-center gap-2 rounded-full border border-gold/50 bg-gold/10 px-3.5 py-1.5 text-sm text-gold hover:bg-gold/20 mb-6">
+                <span className="w-1.5 h-1.5 rounded-full bg-gold" aria-hidden /><span className="font-semibold">Call for papers</span><span className="text-slate-200 hidden sm:inline">· {cfp}</span>
+              </Link>
+            )}
+            <p className="eyebrow">{SITE.brand} Research Institute · {SITE.address.city}</p>
+            <h1 className="mt-4 text-[2.6rem] leading-[1.04] sm:text-6xl lg:text-[4.3rem] font-semibold tracking-[-0.01em] max-w-[14ch]">{heroTitle}</h1>
+            <p className="mt-6 text-lg sm:text-xl text-slate-200 leading-relaxed max-w-2xl">{heroIntro}</p>
             <form role="search" onSubmit={(e) => { e.preventDefault(); navigate(`/research${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`); }} className="mt-8 flex flex-col sm:flex-row gap-2 max-w-xl">
               <label htmlFor="hero-q" className="sr-only">Search the research library</label>
               <div className="relative flex-1">
                 <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden />
-                <input id="hero-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search by title, author or keyword"
+                <input id="hero-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search papers, authors, keywords"
                   className="w-full h-12 rounded-lg bg-white text-slate-900 pl-11 pr-3 text-base focus:outline-none focus:ring-2 focus:ring-gold" />
               </div>
               <button className="btn btn-gold h-12">Search</button>
             </form>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Link to="/submit" className="btn btn-ghost-light">Submit a manuscript</Link>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Link to={user ? "/account/manuscripts/new" : "/submit"} className="btn btn-ghost-light">Submit a manuscript <ArrowRight className="w-4 h-4" aria-hidden /></Link>
               <Link to="/project-review" className="btn btn-ghost-light">Request a project review</Link>
             </div>
           </div>
-          <aside className="lg:col-span-5">
-            <div className="rounded-xl border border-white/15 bg-white/[0.06] p-6 sm:p-8">
-              <h2 className="font-sans text-base font-semibold text-gold">Publishing with {SITE.short}</h2>
-              <ul className="mt-5 space-y-5">
-                {[
-                  { icon: Scale, t: SITE.publishing.reviewModel, d: "Manuscripts are assessed by independent reviewers who don't see the authors' names." },
-                  { icon: Unlock, t: "Open access", d: `Published papers are free to read and download, under ${SITE.publishing.license}.` },
-                  { icon: BadgeCheck, t: SITE.publishing.processingCharges, d: "Authors don't pay to submit or to publish." },
-                  { icon: FileSearch, t: "Track your submission", d: "Follow each stage online with your reference number." },
-                ].map((x) => (
-                  <li key={x.t} className="flex gap-4">
-                    <x.icon className="w-5 h-5 text-gold mt-0.5 shrink-0" aria-hidden />
-                    <div><p className="font-semibold text-white">{x.t}</p><p className="text-slate-300 text-[0.95rem] leading-relaxed">{x.d}</p></div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </aside>
+          <div className="lg:col-span-5">
+            <CoverCard paper={featured} />
+          </div>
+        </div>
+        <div className="relative border-t border-white/10 bg-black/10">
+          <ul className="container-x py-4 flex flex-wrap gap-x-8 gap-y-2 text-sm" aria-label="Divisions">
+            {DIVISIONS.map((d) => (
+              <li key={d.code} className="flex items-baseline gap-2"><span className="text-gold font-semibold">{d.code}</span><span className="text-slate-300">{d.name}</span></li>
+            ))}
+          </ul>
         </div>
         {stats && stats.publications >= 10 && (
-          <div className="relative border-t border-white/10">
-            <dl className="container-x py-6 grid grid-cols-3 gap-6 max-w-3xl">
-              {[[stats.publications, "Published papers"], [stats.authors, "Authors"], [stats.downloads, "Downloads"]].map(([n, l]) => (
-                <div key={l as string}><dt className="text-slate-400 text-sm">{l}</dt><dd className="font-serif text-3xl text-white">{Number(n).toLocaleString("en")}</dd></div>
-              ))}
-            </dl>
-          </div>
+          <dl className="relative container-x py-6 grid grid-cols-3 gap-6 max-w-3xl">
+            {[[stats.publications, "Published papers"], [stats.authors, "Authors"], [stats.downloads, "Downloads"]].map(([n, l]) => (
+              <div key={l as string}><dt className="text-slate-400 text-sm">{l}</dt><dd className="font-serif text-3xl text-white">{Number(n).toLocaleString("en")}</dd></div>
+            ))}
+          </dl>
         )}
       </section>
 
@@ -182,12 +186,12 @@ export default function HomeView() {
       </section>
 
       {/* Editorial board (only when configured) */}
-      {SITE.editorialBoard.length > 0 && (
+      {content.board.length > 0 && (
         <section className="py-20 bg-paper">
           <div className="container-x">
             <SectionHeader eyebrow="Editorial board" title="The people behind the review" />
             <ul className="mt-10 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {SITE.editorialBoard.slice(0, 6).map((m) => (
+              {content.board.slice(0, 6).map((m) => (
                 <li key={m.name} className="card p-5">
                   <p className="font-semibold text-navy-ink">{m.name}</p>
                   <p className="text-sm text-gold-deep font-medium">{m.role}</p>
@@ -233,5 +237,48 @@ export default function HomeView() {
         </div>
       </section>
     </>
+  );
+}
+
+function CoverCard({ paper }: { paper: Publication | null | undefined }) {
+  if (paper === undefined) return <div className="aspect-[4/5] max-w-md ml-auto rounded-lg bg-white/5 animate-pulse" />;
+  const P = SITE.publishing;
+  if (!paper) {
+    return (
+      <div className="max-w-md lg:ml-auto rounded-xl border border-white/15 bg-white/[0.06] backdrop-blur-sm p-7">
+        <h2 className="font-sans text-base font-semibold text-gold">Publishing with {SITE.short}</h2>
+        <ul className="mt-5 space-y-5">
+          {[
+            { icon: Scale, t: P.reviewModel, d: "Independent reviewers assess every manuscript without seeing the authors' names." },
+            { icon: Unlock, t: "Open access", d: `Free to read and download, under ${P.license}.` },
+            { icon: BadgeCheck, t: P.processingCharges, d: "Authors don't pay to submit or to publish." },
+            { icon: FileSearch, t: "Follow every step", d: "Track review and correspond with editors from your account." },
+          ].map((x) => (
+            <li key={x.t} className="flex gap-4"><x.icon className="w-5 h-5 text-gold mt-0.5 shrink-0" aria-hidden /><div><p className="font-semibold text-white">{x.t}</p><p className="text-slate-300 text-[0.95rem] leading-relaxed">{x.d}</p></div></li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+  return (
+    <Link to={`/research/${paper.slug}`} className="group block max-w-md lg:ml-auto">
+      <article className="relative bg-[#fbfaf7] text-navy-ink rounded-md shadow-[0_30px_60px_-20px_rgba(0,0,0,.6)] overflow-hidden transition-transform duration-300 group-hover:-translate-y-1">
+        <div className="bg-navy text-white px-6 py-4 flex items-center justify-between">
+          <span className="text-xs font-semibold tracking-wide">{paper.series || (paper.type === "Working Paper" ? P.seriesName : paper.type)}</span>
+          <span className="text-xs text-gold font-semibold">{paper.number || paper.publishedDate.slice(0, 4)}</span>
+        </div>
+        <div className="relative px-6 pt-7 pb-6 min-h-[300px] flex flex-col">
+          <Guilloche size={400} className="absolute -right-24 -bottom-24 w-72 h-72" color="#0a2463" opacity={0.12} />
+          <p className="text-xs font-semibold text-gold-deep">Latest {paper.type.toLowerCase()} · {paper.category}</p>
+          <h2 className="relative mt-3 text-2xl leading-snug font-semibold line-clamp-4">{paper.title}</h2>
+          <p className="relative mt-3 text-slate-700">{authorNames(paper.authors)}</p>
+          <div className="relative mt-auto pt-6 flex items-center justify-between text-sm">
+            <span className="text-slate-500">{SITE.short} · {formatDate(paper.publishedDate, { month: "long", year: "numeric" })}</span>
+            <span className="inline-flex items-center gap-1 font-semibold text-navy group-hover:gap-2 transition-all">Read <ArrowRight className="w-4 h-4" aria-hidden /></span>
+          </div>
+        </div>
+        <div className="h-1.5 bg-gold" />
+      </article>
+    </Link>
   );
 }

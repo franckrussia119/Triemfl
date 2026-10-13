@@ -13,12 +13,14 @@ export default function ResearchDetailView({ slug }: { slug: string }) {
   const [style, setStyle] = useState<keyof ReturnType<typeof citations>>("APA");
   const [copied, setCopied] = useState("");
   const [showReader, setShowReader] = useState(false);
+  const [owner, setOwner] = useState<{ id: number; name: string } | null>(null);
   usePageTitle(p ? `${p.title} | ${SITE.short}` : `Research | ${SITE.short}`);
 
   useEffect(() => {
     setP(null); setMissing(false); setShowReader(false);
     api<Publication>(`/api/publications/${slug}`).then(setP).catch((e) => { if (e instanceof ApiError && e.status === 404) setMissing(true); });
     api<Publication[]>("/api/publications").then(setRelated).catch(() => {});
+    api<{ id: number; name: string } | null>(`/api/publications/${slug}/owner`).then(setOwner).catch(() => {});
   }, [slug]);
 
   const url = `${window.location.origin}/research/${slug}`;
@@ -60,7 +62,7 @@ export default function ResearchDetailView({ slug }: { slug: string }) {
           <ul className="mt-5 flex flex-wrap gap-x-6 gap-y-2">
             {p.authors.map((a) => (
               <li key={a.name} className="text-slate-200">
-                <span className="font-semibold text-white">{a.name}</span>
+                {owner && owner.name === a.name ? <Link to={`/authors/${owner.id}`} className="font-semibold text-white underline decoration-gold underline-offset-4">{a.name}</Link> : <span className="font-semibold text-white">{a.name}</span>}
                 {a.affiliation && <span className="text-slate-300">, {a.affiliation}</span>}
                 {a.orcid && <a href={`https://orcid.org/${a.orcid}`} target="_blank" rel="noopener noreferrer" className="ml-2 text-xs text-gold underline underline-offset-2">ORCID</a>}
               </li>
