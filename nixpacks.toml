@@ -1,5 +1,8 @@
+[variables]
+NIXPACKS_NODE_VERSION = "22"
+
 [phases.build]
 cmds = ["npm run build"]
 
 [start]
-cmd = "node dist/server.cjs"
+cmd = "node --no-warnings dist/server.cjs"

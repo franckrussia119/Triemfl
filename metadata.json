@@ -1,6 +1,6 @@
 {
   "name": "Tango Research Institute of Economics, Finance, Management and Law",
-  "description": "Tango Research Institute of Economics, Finance, Management and Law (TRIEFML) - A premium international academic, financial, and legal research platform.",
+  "description": "Research library, manuscript submission and peer-review workflow, and project evaluation services of the Tango Research Institute of Economics, Finance, Management and Law (TRIEFML).",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": []
 }

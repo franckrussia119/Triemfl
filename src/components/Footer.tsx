@@ -1,171 +1,87 @@
-import React from "react";
-import { GraduationCap, ArrowUpRight, HelpCircle, Mail, MapPin, Shield } from "lucide-react";
+import React, { useState } from "react";
+import { Mail, MapPin } from "lucide-react";
+import { Link } from "../lib/router";
+import { SITE, CATEGORIES } from "../lib/site";
+import { Logo } from "./Navbar";
+import { api, errorMessage } from "../lib/api";
 
-interface FooterProps {
-  onViewChange: (view: string, extraData?: any) => void;
+export function NewsletterForm({ dark = true, stacked = false }: { dark?: boolean; stacked?: boolean }) {
+  const [email, setEmail] = useState("");
+  const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const [msg, setMsg] = useState("");
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setState("sending");
+    try { await api("/api/subscribe", { method: "POST", json: { email } }); setState("done"); }
+    catch (err: any) { setState("error"); setMsg(err?.data?.errors?.email || errorMessage(err)); }
+  };
+  if (state === "done") return <p role="status" className={dark ? "text-slate-200" : "text-slate-700"}>Subscribed. New papers and calls for papers will arrive at {email}.</p>;
+  return (
+    <form onSubmit={submit} className="w-full max-w-md">
+      <div className={`flex flex-col gap-2 ${stacked ? "" : "sm:flex-row"}`}>
+        <label htmlFor={`nl-${dark}-${stacked}`} className="sr-only">Email address</label>
+        <input id={`nl-${dark}-${stacked}`} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Your email address"
+          className={`input flex-1 ${dark ? "!bg-white/10 !border-white/20 !text-white placeholder:text-slate-400" : ""}`} />
+        <button className="btn btn-gold" disabled={state === "sending"}>{state === "sending" ? "Subscribing…" : "Subscribe"}</button>
+      </div>
+      {state === "error" && <p className="field-error !text-red-300 mt-2">{msg}</p>}
+    </form>
+  );
 }
 
-export default function Footer({ onViewChange }: FooterProps) {
-  const currentYear = new Date().getFullYear();
-
+export default function Footer() {
+  const p = SITE.publishing;
   return (
-    <footer id="footer-section" className="bg-[#051130] text-slate-300 border-t border-blue-900/60 pt-16 pb-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        
-        {/* Main Footer Content */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 pb-12 border-b border-slate-800">
-          
-          {/* Col 1: About TriefML */}
-          <div className="lg:col-span-2">
-            <div className="flex items-center gap-2.5 mb-5 cursor-pointer" onClick={() => onViewChange("home")}>
-              <div className="bg-[#c8960c] p-1.5 rounded text-[#0a2463]">
-                <GraduationCap className="w-5 h-5" />
-              </div>
-              <span className="text-lg font-bold text-white tracking-wide">Tango <span className="text-[9px] bg-[#c8960c] text-[#0a2463] px-1.5 py-0.5 rounded font-mono font-bold">TRIEFML</span></span>
-            </div>
-            <p className="text-sm text-slate-400 mb-6 leading-relaxed max-w-sm">
-              The Tango Research Institute of Economics, Finance, Management and Law (TRIEFML) is a premium independent economic, financial and legal intelligence platform standardizing global economic governance, policy analysis, legal audits, and project evaluation across institutions globally.
-            </p>
-            <div className="space-y-2 text-xs text-slate-400">
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-[#c8960c]" />
-                <span>Registered Academic NGO & Certified Research Publisher</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-slate-300">ISSN:</span>
-                <span>1984-2034 (Online) | 1984-2026 (Print)</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-slate-300">DOI Crossref prefix:</span>
-                <span>10.5033/tango-triefml</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Col 2: Research & Publications */}
-          <div>
-            <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-5">Research Hub</h3>
-            <ul className="space-y-3.5 text-sm">
-              <li>
-                <button onClick={() => onViewChange("research", { selectedCategory: "Macroeconomics" })} className="hover:text-white hover:underline transition-all text-left">
-                  Macroeconomics
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onViewChange("research", { selectedCategory: "Development" })} className="hover:text-white hover:underline transition-all text-left">
-                  Development Economics
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onViewChange("research", { selectedCategory: "Finance" })} className="hover:text-white hover:underline transition-all text-left">
-                  Finance & Fintech
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onViewChange("research", { selectedCategory: "Trade" })} className="hover:text-white hover:underline transition-all text-left">
-                  Trade & Tariffs
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onViewChange("publications")} className="hover:text-white hover:underline transition-all text-left flex items-center gap-1">
-                  Books & Library <ArrowUpRight className="w-3 h-3 text-[#c8960c]" />
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          {/* Col 3: Institutional Services */}
-          <div>
-            <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-5">Core Services</h3>
-            <ul className="space-y-3.5 text-sm">
-              <li>
-                <button onClick={() => onViewChange("project-review")} className="hover:text-white hover:underline transition-all text-left">
-                  Project Standardization
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onViewChange("project-review")} className="hover:text-white hover:underline transition-all text-left">
-                  Review Pricing & Cost
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onViewChange("consulting")} className="hover:text-white hover:underline transition-all text-left">
-                  Economic Policy Analysis
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onViewChange("consulting")} className="hover:text-white hover:underline transition-all text-left">
-                  Regulatory Compliance
-                </button>
-              </li>
-              <li>
-                <button onClick={() => onViewChange("submit")} className="hover:text-white hover:underline transition-all text-left text-[#c8960c] font-medium">
-                  Submit Research Paper
-                </button>
-              </li>
-            </ul>
-          </div>
-
-          {/* Col 4: Contact & Locations */}
-          <div>
-            <h3 className="text-sm font-semibold text-white uppercase tracking-wider mb-5">Global Offices</h3>
-            <ul className="space-y-3.5 text-sm">
-              <li className="flex items-start gap-2.5">
-                <MapPin className="w-5 h-5 text-[#c8960c] shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-400">
-                  <span className="font-semibold text-slate-300 block">Moscow Headquarters</span>
-                  Bolshaya Dmitrovka, 12<br />Moscow, 103009, Russian Federation
-                </span>
-              </li>
-              <li className="flex items-start gap-2.5">
-                <MapPin className="w-5 h-5 text-slate-500 shrink-0 mt-0.5" />
-                <span className="text-xs text-slate-400">
-                  <span className="font-semibold text-slate-300 block">Accra Research Liaison</span>
-                  Ring Road Central, Accra, Republic of Ghana
-                </span>
-              </li>
-              <li className="flex items-center gap-2.5">
-                <Mail className="w-4 h-4 text-[#c8960c]" />
-                <button onClick={() => onViewChange("contact")} className="hover:text-white text-xs hover:underline text-left">
-                  inquiries@triefml.org
-                </button>
-              </li>
-            </ul>
-          </div>
-
+    <footer className="bg-navy-deep text-slate-300 on-dark">
+      <div className="container-x py-14 grid gap-10 grid-cols-1 md:grid-cols-2 lg:grid-cols-12">
+        <div className="lg:col-span-4 space-y-4">
+          <Logo />
+          <p className="text-[0.95rem] leading-relaxed max-w-sm">{SITE.tagline}</p>
+          <dl className="text-sm space-y-1 text-slate-400">
+            <div><dt className="inline">Peer review: </dt><dd className="inline">{p.reviewModel}</dd></div>
+            <div><dt className="inline">Licence: </dt><dd className="inline"><a className="underline underline-offset-2 hover:text-white" href={p.licenseUrl} target="_blank" rel="noopener noreferrer">{p.license}</a></dd></div>
+            {p.issnOnline && <div><dt className="inline">ISSN (online): </dt><dd className="inline">{p.issnOnline}</dd></div>}
+            {p.issnPrint && <div><dt className="inline">ISSN (print): </dt><dd className="inline">{p.issnPrint}</dd></div>}
+            {p.doiPrefix && <div><dt className="inline">DOI prefix: </dt><dd className="inline">{p.doiPrefix}</dd></div>}
+          </dl>
         </div>
-
-        {/* Partner Logos Row */}
-        <div className="py-8 border-b border-slate-800 flex flex-col md:flex-row items-center justify-between gap-6">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Institutional Partners & Indexing Networks</span>
-          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-slate-400 font-serif tracking-widest">
-            <span className="hover:text-white transition-colors">WORLD BANK GROUP</span>
-            <span className="text-slate-700">•</span>
-            <span className="hover:text-white transition-colors">AFRICAN DEVELOPMENT BANK</span>
-            <span className="text-slate-700">•</span>
-            <span className="hover:text-white transition-colors">ECOWAS COMMISSION</span>
-            <span className="text-slate-700">•</span>
-            <span className="hover:text-white transition-colors">SSRN NETWORK</span>
-            <span className="text-slate-700">•</span>
-            <span className="hover:text-white transition-colors">JSTOR INDEX</span>
+        <nav aria-label="Research areas" className="lg:col-span-3">
+          <h2 className="font-sans text-white font-semibold mb-3">Research areas</h2>
+          <ul className="space-y-2 text-[0.95rem]">
+            {CATEGORIES.slice(0, 6).map((c) => <li key={c}><Link className="hover:text-white" to={`/research?category=${encodeURIComponent(c)}`}>{c}</Link></li>)}
+          </ul>
+        </nav>
+        <nav aria-label="Institute" className="lg:col-span-2">
+          <h2 className="font-sans text-white font-semibold mb-3">Institute</h2>
+          <ul className="space-y-2 text-[0.95rem]">
+            {[["/submit", "Submit research"], ["/track", "Track a submission"], ["/policies", "Editorial policies"], ["/project-review", "Project review"], ["/consulting", "Consulting"], ["/about", "About"]].map(([to, l]) => (
+              <li key={to}><Link className="hover:text-white" to={to}>{l}</Link></li>
+            ))}
+          </ul>
+        </nav>
+        <div className="lg:col-span-3 space-y-4 text-[0.95rem]">
+          <h2 className="font-sans text-white font-semibold">Contact</h2>
+          <p className="flex gap-2"><MapPin className="w-4 h-4 mt-1 shrink-0 text-gold" aria-hidden /><span>{SITE.address.lines.map((l) => <span key={l} className="block">{l}</span>)}</span></p>
+          <p className="flex gap-2 break-all"><Mail className="w-4 h-4 mt-1 shrink-0 text-gold" aria-hidden /><a className="hover:text-white" href={`mailto:${SITE.email.general}`}>{SITE.email.general}</a></p>
+          <div className="pt-2">
+            <p className="text-white font-semibold mb-2">New research by email</p>
+            <NewsletterForm stacked />
           </div>
         </div>
-
-        {/* Bottom copyright & open access badge */}
-        <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-          <div>
-            &copy; {currentYear} Triefml Institute for Economic and Financial Market Leadership. All rights reserved.
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="px-2.5 py-1 rounded bg-[#1e6f5c]/20 text-[#1e6f5c] border border-[#1e6f5c]/40 font-semibold tracking-wide uppercase text-[10px]">
-              Open Access Policy
-            </span>
-            <span className="px-2.5 py-1 rounded bg-blue-900/30 text-slate-400 border border-blue-900/50 font-mono text-[10px]">
-              CC BY-NC-ND 4.0
-            </span>
+      </div>
+      {(SITE.partners.length > 0 || SITE.indexedIn.length > 0) && (
+        <div className="border-t border-white/10">
+          <div className="container-x py-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-400">
+            {SITE.partners.length > 0 && <span>Partners: {SITE.partners.map((x) => x.name).join(", ")}</span>}
+            {SITE.indexedIn.length > 0 && <span>Indexed in: {SITE.indexedIn.join(", ")}</span>}
           </div>
         </div>
-
+      )}
+      <div className="border-t border-white/10">
+        <div className="container-x py-5 flex flex-wrap justify-between gap-3 text-sm text-slate-400">
+          <span>© {new Date().getFullYear()} {SITE.name}</span>
+          <Link to="/admin" className="hover:text-white">Staff login</Link>
+        </div>
       </div>
     </footer>
   );
