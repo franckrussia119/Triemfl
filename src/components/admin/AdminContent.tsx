@@ -9,7 +9,8 @@ import { actionLabel } from "./AdminApp";
 import { Avatar } from "../views/AccountView";
 
 const TEXTS = [
-  { key: "hero_title", label: "Homepage headline", hint: "Leave empty to use the default: \"Research that informs economic policy\".", rows: 2 },
+  { key: "hero_title", label: "Homepage headline", hint: "Leave empty to use the animated headline \"Research that informs …\" with the topics below.", rows: 2 },
+  { key: "hero_topics", label: "Homepage rotating topics", hint: "Topics that change in the animated headline, separated by commas. Keep each short (under 18 characters). Leave empty for the defaults: economic policy, public finance, sovereign debt, banking reform, trade integration, business law, fiscal reform.", rows: 2 },
   { key: "hero_intro", label: "Homepage introduction", hint: "One or two sentences under the headline.", rows: 3 },
   { key: "call_for_papers", label: "Call for papers banner", hint: "Short text shown on the homepage, e.g. the theme and deadline of the current call. Leave empty to hide.", rows: 2 },
   { key: "mission", label: "About page: mission", rows: 3 },

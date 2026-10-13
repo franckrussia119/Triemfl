@@ -67,3 +67,25 @@
   .prose-body p + p { margin-top: 1rem; }
   .pill { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .6rem; border-radius: 999px; font-size: .78rem; font-weight: 600; }
 }
+
+/* ---- Motion ---- */
+@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.ticker-track { animation: ticker 60s linear infinite; }
+.ticker:hover .ticker-track, .ticker:focus-within .ticker-track { animation-play-state: paused; }
+
+@keyframes slow-spin { to { transform: rotate(360deg); } }
+.slow-spin { animation: slow-spin 240s linear infinite; transform-origin: 50% 50%; }
+.slow-spin-reverse { animation: slow-spin 320s linear infinite reverse; transform-origin: 50% 50%; }
+
+@keyframes live-ping { 75%, 100% { transform: scale(2.4); opacity: 0; } }
+.live-ping { animation: live-ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite; opacity: .6; }
+
+@keyframes progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.progress-bar { transform-origin: left; animation: progress linear forwards; }
+
+@keyframes drift { 0%, 100% { transform: translate3d(0,0,0); } 50% { transform: translate3d(-2%, 1.5%, 0); } }
+.drift { animation: drift 18s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track, .slow-spin, .slow-spin-reverse, .live-ping, .progress-bar, .drift { animation: none !important; }
+}

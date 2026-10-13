@@ -421,7 +421,7 @@ adminRouter.post("/users", adminOnly, async (req, res) => {
 // ================================================================ Site content (admin only)
 adminRouter.get("/settings", (_req, res) => res.json(getSettings()));
 adminRouter.put("/settings", adminOnly, (req, res) => {
-  const allowed = ["hero_title", "hero_intro", "mission", "vision", "about_history", "call_for_papers"];
+  const allowed = ["hero_title", "hero_topics", "hero_intro", "mission", "vision", "about_history", "call_for_papers"];
   const up = db.prepare("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value");
   const del = db.prepare("DELETE FROM settings WHERE key = ?");
   for (const k of allowed) if (k in req.body) { const v = str(req.body[k], 6000); v ? up.run(k, v) : del.run(k); }

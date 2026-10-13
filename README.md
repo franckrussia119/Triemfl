@@ -35,7 +35,7 @@ Finance, Management and Law (TRIEFML).
 - Inbox, publications, announcements, subscribers.
 - Users and roles: approve institutions, suspend accounts, change roles,
   create staff and reviewer accounts, issue password links.
-- Site content: homepage headline and introduction, call for papers, About
+- Site content: homepage headline, rotating headline topics and introduction, call for papers, About
   texts, editorial board and advisory council with photos.
 - Activity log of who did what.
 
